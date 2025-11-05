@@ -1,7 +1,5 @@
 # Lab 5 - Continuous Integration & Continuous Delivery (CI/CD)
 
-# Lab - Continuous Integration & Continuous Delivery (CI/CD)
-
 ## Description
 
 Ce projet met en œuvre l'intégration continue (CI) et la livraison continue (CD) pour une application Node.js. L'intégration continue utilise **GitHub Actions** pour automatiser les tests et la vérification de code, tandis que la livraison continue déploie l'application sur **Render**. Ce processus permet de tester, valider et déployer automatiquement les modifications du code à chaque mise à jour du projet.
