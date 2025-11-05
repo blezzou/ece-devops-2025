@@ -1,24 +1,18 @@
-# Lab 5 - Continuous Integration & Continuous Delivery (CI/CD)
+# Lab 6 - Instructure as code
 
 ## Description
 
-Ce projet met en œuvre l'intégration continue (CI) et la livraison continue (CD) pour une application Node.js. L'intégration continue utilise **GitHub Actions** pour automatiser les tests et la vérification de code, tandis que la livraison continue déploie l'application sur **Render**. Ce processus permet de tester, valider et déployer automatiquement les modifications du code à chaque mise à jour du projet.
+Ce laboratoire vous permettra de découvrir l'Infrastructure as Code (IaC) en utilisant Vagrant et Ansible pour la gestion de machines virtuelles et le déploiement d'applications. Vous apprendrez à provisionner des machines virtuelles à l'aide de méthodes impératives et déclaratives, puis à configurer un serveur GitLab et à effectuer un contrôle de santé sur ce dernier.
 
 Le projet comprend deux parties principales :
 
-1. **Intégration continue avec GitHub Actions** : Mise en place d'un workflow GitHub Actions pour automatiser les tests de l'application.
-2. **Livraison continue avec Render** : Déploiement automatique de l'application sur la plateforme Render, tout en s'assurant que l'application fonctionne correctement après chaque modification.
-
-Version : 1.0.0  
-Date : 05/11/2025
+1. **Approche impérative - Utilisation de Vagrant avec le provisionneur Shell.**
+2. **Approche déclarative - Installation de GitLab avec Vagrant et le provisionneur Ansible / Configuration d’un contrôle de santé pour GitLab.**
 
 ## Technologies utilisées
 
-- **Node.js** : Environnement d'exécution JavaScript côté serveur
-- **GitHub Actions** : Outil d'intégration continue pour automatiser les tests et les déploiements
-- **Render** : Plateforme de déploiement pour héberger l'application Web
-- **Redis** : Base de données en mémoire utilisée dans le cadre de l'intégration continue
-- **Express.js** : Framework Node.js pour la création d'API REST (dépendance pré-existante du projet)
+- **VirtualBox** : Pour la gestion des machines virtuelles
+- **Vagrant** : outil pour gérer les environnements virtuels
 
 ## Prérequis
 
@@ -28,82 +22,71 @@ Avant de commencer à configurer CI/CD, assurez-vous d'avoir :
 2. Un compte Render pour le déploiement de l'application.
 3. La configuration des services Redis dans GitHub Actions et Render (une carte de crédit peut être nécessaire sur Render pour certains services).
 
-## Installation
 
-### 1. Initialisation du projet
+## Partie 1 : Approche impérative - Utilisation de Vagrant avec Shell Provisioner / Configuration d'un contrôle de santé pour GitLab
 
-Si le projet n'est pas encore configuré sur GitHub, voici les étapes à suivre pour initialiser le dépôt local et pousser le code sur GitHub :
+### 1. Préparer l'environnement virtuel
 
-1. **Créer un dépôt Git local** :
-   ```bash
-   git init
+Accédez au dossier part-1 et examinez le fichier Vagrantfile
 
-2. **Ajouter les fichiers du projet** :
+### 2. Créer et démarrer une machine virtuelle (VM)
 
-    git add .
-    git commit -m "Initial commit"
+Pour créer la VM et la démarrer, exécutez la commande suivante :
+vagrant up
 
+Vous pouvez également utiliser les commandes suivantes pour gérer la VM :
+- Vérifier l'état des VMs
+vagrant status
 
-3. **Créer un dépôt distant sur GitHub et le lier à votre projet local** :
+- Arrêter la VM
+vagrant halt
 
-    git remote add origin <url_du_dépôt_github>
-    git push -u origin master
+- Détruire la VM
+vagrant destroy
 
+### 3. Connexion SSH à la VM
 
-### 2. Installation des dépendances, démarrage et tests
+Pour vous connecter à la VM via SSH, exécutez la commande :
+vagrant ssh
 
-npm install
+Cela vous donnera un accès terminal à la machine virtuelle, où vous pourrez exécuter des commandes Linux.
 
-npm start
+### 4. Configuration via le Shell Provisioner
 
-npm test
+Dans le fichier Vagrantfile, vous pouvez ajouter des scripts pour automatiser certaines configurations.
 
+## Partie 2 : Approche déclarative - Installation de GitLab avec Vagrant et Ansible
 
-## Partie 1 : Intégration Continue avec GitHub Actions
+Dans cette partie, nous allons utiliser Ansible pour installer GitLab sur une machine virtuelle.
 
-### 1. Configuration du Workflow GitHub Actions
+### 1. Préparer l'environnement virtuel
 
-Le fichier de configuration pour GitHub Actions est situé dans `.github/workflows/ci.yml`. Ce fichier définit le workflow d'intégration continue pour le projet, qui comprend les étapes suivantes :
+Accédez au dossier part-2 et examinez le fichier Vagrantfile et les playbooks Ansible
+Le dossier playbooks contient les playbooks Ansible nécessaires pour l'installation de GitLab.
 
-- Installation des dépendances
-- Lancement des tests
-- Vérification de l'intégration avec Redis (si utilisé)
+### 2. Créer et provisionner la VM
 
-### 2. Amélioration du Workflow avec Redis
+Exécutez la commande suivante pour démarrer la machine virtuelle et lancer le provisioning :
+vagrant up
 
-Le workflow inclut un service Redis simulé à l'aide des "service containers" de GitHub Actions. Cette configuration permet à l'application Node.js de se connecter à Redis pendant les tests, ce qui est essentiel pour valider l'intégration correcte avec la base de données en mémoire.
+### 3. Tester l'installation de GitLab
 
-### 3. Pull Request et Validation
+Après le provisioning, ouvrez un navigateur et accédez à l'URL pour vérifier que GitLab est correctement installé
 
-Après avoir créé une nouvelle branche, vous pouvez faire une pull request vers la branche principale pour que GitHub Actions exécute les tests et vérifie les modifications avant de fusionner la branche.
+### 4. Exécuter un contrôle de santé avec curl
 
-- Créer une nouvelle branche :
-git checkout -b <nom_de_branche>
+Connectez-vous à la VM avec SSH et exécutez la commande pour vérifier l'état de GitLab :
+curl http://[...]-/health
 
-- Effectuer une modification du code et valider les changements :
-git commit -am "Modification du code"
-git push origin <nom_de_branche>
+### 5. Lire les tâches de contrôle de santé dans Ansible
 
-### 3. Vérification du Workflow sur GitHub
+Examinez le fichier lab/part-2/playbooks/roles/gitlab/healthchecks/tasks/main.yml pour voir comment les contrôles de santé sont configurés dans Ansible.
 
-Une fois la Pull Request créée, allez dans l'onglet "Actions" de GitHub pour observer l'exécution du workflow. Vous pouvez consulter les logs pour vérifier si des erreurs surviennent durant les tests ou la connexion à Redis.
+### 6. Exécuter le rôle gitlab/healthcheck
 
+Exécutez les playbooks Ansible pour lancer les contrôles de santé, en remplaçant TAG par le tag approprié :
+ansible-playbook /vagrant/playbooks/run.yml --tags TAG -i /tmp/vagrant-ansible/inventory/vagrant_ansible_local_inventory
 
-## Partie 2 : Livraison Continue avec Render
-
-### 1. Création de l'application sur Render
-
-Créez une application Web sur Render en suivant les étapes de la documentation.
-Synchronisez l'application avec le dépôt GitHub contenant votre projet.
-Sélectionnez la région Frankfurt (EU Central) pour l'hébergement et choisissez l'option For Hobby Projects pour le type d'instance.
-Configurez les commandes suivantes :
-Root directory : modules/04.continuous-testing/lab-corrections
-Build Command : npm build
-Start Command : npm start
-
-### 2. Déploiement et tests
-
-Le processus de déploiement automatique se déclenchera à chaque fois qu'une nouvelle modification sera poussée sur le dépôt GitHub. Vous pouvez tester l'application sur votre domaine public fourni par Render.
 
 ## Auteur
 **Ismail CHERCHAR | ADAM BOUCHIBA | NICOLAS PELLERIN**  
