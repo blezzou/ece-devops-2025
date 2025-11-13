@@ -1,91 +1,243 @@
-# Lab 6 - Instructure as code
+# Lab 8 - CONTAINER ORCHESTRATION
 
-## Description
+## Introduction
 
-Ce laboratoire vous permettra de découvrir l'Infrastructure as Code (IaC) en utilisant Vagrant et Ansible pour la gestion de machines virtuelles et le déploiement d'applications. Vous apprendrez à provisionner des machines virtuelles à l'aide de méthodes impératives et déclaratives, puis à configurer un serveur GitLab et à effectuer un contrôle de santé sur ce dernier.
+Nous allons commencer par rappeler simplement les différents outils et expliquer le lexique utile pour le lab.
 
-Le projet comprend deux parties principales :
+**Image Docker** : nous pouvons faire la comparaison avec une recette de cuisine (liste d’ingrédients + instructions) qui décrit exactement comment préparer un plat. Une image contient tout ce qu’il faut pour exécuter une application (système de fichiers minimal, bibliothèques, code).
 
-1. **Approche impérative - Utilisation de Vagrant avec le provisionneur Shell.**
-2. **Approche déclarative - Installation de GitLab avec Vagrant et le provisionneur Ansible / Configuration d’un contrôle de santé pour GitLab.**
+**Conteneur** : on suit la recette et que tu cuisines, on obtient un plat prêt à servir. Un conteneur est l’exécution de l’image : c’est le plat qui tourne. Il est isolé (comme un bocal hermétique) et fonctionne de façon identique sur n’importe quelle machine qui comprend Docker.
 
-## Technologies utilisées
+Avec ceci, pas besoin d’installer manuellement tous les logiciels sur une machine : l’image embarque l’intégralité.
 
-- **VirtualBox** : Pour la gestion des machines virtuelles
-- **Vagrant** : outil pour gérer les environnements virtuels
+**Kubernetes** : il joue le rôle de chef d’orchestre pour les conteneurs. Si Docker gère des plats individuels (conteneurs), Kubernetes gère le grand restaurant (des centaines de plats) : il organise qui cuisine, s’assure qu’il y a assez de portions, et distribue les plats aux clients.
 
-## Prérequis
+Voici quelques concepts clés :
 
-Avant de commencer à configurer CI/CD, assurez-vous d'avoir :
+- **Pod** : un ou plusieurs conteneurs qui tournent ensemble (comme une assiette avec un plat dedans).
+- **Deployment** : une demande pour dire « je veux N assiettes ».
+- **Service** : une porte d’entrée stable pour accéder à une application, même si les assiettes (pods) changent d’adresse (IP).
+- **Scaling** : augmenter ou diminuer le nombre d’assiettes (pods) pour supporter plus ou moins de clients.
 
-1. Un dépôt GitHub contenant le projet de l'API utilisateur.
-2. Un compte Render pour le déploiement de l'application.
-3. La configuration des services Redis dans GitHub Actions et Render (une carte de crédit peut être nécessaire sur Render pour certains services).
+**Minikube** : c’est un mini-restaurant local que l’on peut lancer sur sa machine pour apprendre Kubernetes. Il simule un cluster (ensemble de machines Kubernetes) sur son PC en utilisant une VM ou des conteneurs.
 
+Avant de démarrer le TP, il est important de comprendre pourquoi ces outils existent. Aujourd’hui, les applications ne tournent plus sur une seule machine : elles sont réparties sur plusieurs serveurs pour être plus rapides et plus fiables. Gérer manuellement toutes ces machines serait comme devoir surveiller des dizaines de casseroles sur le feu en même temps. C’est là que Kubernetes intervient, il automatise le lancement, la mise à jour et la surveillance de centaines de conteneurs. Minikube est la version “maison” de Kubernetes : on peut l’utiliser sur son propre ordinateur pour apprendre sans avoir besoin d’un vrai serveur.
 
-## Partie 1 : Approche impérative - Utilisation de Vagrant avec Shell Provisioner / Configuration d'un contrôle de santé pour GitLab
+## 1. Mise en place de Minikube
 
-### 1. Préparer l'environnement virtuel
+Après avoir installé Minikube depuis le site [https://minikube.sigs.k8s.io/docs/](https://minikube.sigs.k8s.io/docs/), on démarre Minikube avec la commande :
 
-Accédez au dossier part-1 et examinez le fichier Vagrantfile
+```bash
+minikube start
+```
 
-### 2. Créer et démarrer une machine virtuelle (VM)
+Cela lance un petit cluster local (un nœud) sur ta machine. On peut vérifier le statut du cluster avec la commande :
 
-Pour créer la VM et la démarrer, exécutez la commande suivante :
-vagrant up
+```bash
+minikube status
+```
 
-Vous pouvez également utiliser les commandes suivantes pour gérer la VM :
-- Vérifier l'état des VMs
-vagrant status
+Voici ce qu’on est censé avoir :
 
-- Arrêter la VM
-vagrant halt
+Si tous les éléments (host, kubelet, apiserver, etc.) sont indiqués comme “Running”, cela signifie que notre mini-cluster est bien démarré et prêt à recevoir des déploiements.
 
-- Détruire la VM
-vagrant destroy
+Minikube peut être vu comme un petit “centre de test” dans lequel on va lancer nos conteneurs sans risquer de perturber notre machine principale.
 
-### 3. Connexion SSH à la VM
+## 2. Utilisation des commandes kubectl
 
-Pour vous connecter à la VM via SSH, exécutez la commande :
-vagrant ssh
+Maintenant, créons un Deployment (une application) avec la commande :
 
-Cela vous donnera un accès terminal à la machine virtuelle, où vous pourrez exécuter des commandes Linux.
+```bash
+kubectl create deployment kubernetes-bootcamp --image=gcr.io/google-samples/kubernetes-bootcamp:v1
+```
 
-### 4. Configuration via le Shell Provisioner
+Cette commande crée une ressource nommée kubernetes-bootcamp qui démarrera un pod contenant l’image gcr.io/google-samples/kubernetes-bootcamp:v1. Elle demande à Kubernetes de créer une "recette de déploiement" (Deployment). Kubernetes sait maintenant comment lancer et surveiller cette application à partir d’une image Docker.
 
-Dans le fichier Vagrantfile, vous pouvez ajouter des scripts pour automatiser certaines configurations.
+Ensuite, vérifions les pods avec la commande :
 
-## Partie 2 : Approche déclarative - Installation de GitLab avec Vagrant et Ansible
+```bash
+kubectl get pods
+```
 
-Dans cette partie, nous allons utiliser Ansible pour installer GitLab sur une machine virtuelle.
+Les pods sont les unités de base dans Kubernetes. Chaque pod correspond à un ou plusieurs conteneurs qui tournent ensemble et partagent les mêmes ressources.
 
-### 1. Préparer l'environnement virtuel
+Ici, il faut attendre que le Pod atteigne le « 1/1 » et on viendra ensuite enregistrer le nom du Pod. Par exemple : kubernetes-bootcamp-658f6cbd58-cwxc4.
 
-Accédez au dossier part-2 et examinez le fichier Vagrantfile et les playbooks Ansible
-Le dossier playbooks contient les playbooks Ansible nécessaires pour l'installation de GitLab.
+Nous allons ensuite inspecter les logs avec :
 
-### 2. Créer et provisionner la VM
+```bash
+kubectl logs $POD_NAME
+```
+(Remplacez $POD_NAME par le nom du pod, ici kubernetes-bootcamp-658f6cbd58-cwxc4).
 
-Exécutez la commande suivante pour démarrer la machine virtuelle et lancer le provisioning :
-vagrant up
+Exécutons une commande dans le pod pour lire le fichier /etc/os-release :
 
-### 3. Tester l'installation de GitLab
+```bash
+kubectl exec kubernetes-bootcamp-658f6cbd58-cwxc4 -- cat /etc/os-release
+```
 
-Après le provisioning, ouvrez un navigateur et accédez à l'URL pour vérifier que GitLab est correctement installé
+Nous allons ensuite ouvrir un shell pour interagir directement avec l’application :
 
-### 4. Exécuter un contrôle de santé avec curl
+```bash
+kubectl exec -it kubernetes-bootcamp-658f6cbd58-cwxc4 -- bash
+```
 
-Connectez-vous à la VM avec SSH et exécutez la commande pour vérifier l'état de GitLab :
-curl http://[...]-/health
+Dans ce shell, exécutons plusieurs commandes pour répertorier le contenu du répertoire dans lequel on se trouve et tester l'application web à l’intérieur du conteneur :
 
-### 5. Lire les tâches de contrôle de santé dans Ansible
+```bash
+ls
+cat server.js
+curl localhost:8080
+```
 
-Examinez le fichier lab/part-2/playbooks/roles/gitlab/healthchecks/tasks/main.yml pour voir comment les contrôles de santé sont configurés dans Ansible.
+La première commande liste les fichiers et dossiers du répertoire courant. La deuxième affiche le contenu du fichier server.js, et la troisième commande fait un appel curl pour vérifier si l’application répond à l’intérieur du pod. Cependant, cette application n’est pas encore visible depuis l’extérieur : pour l’instant, elle tourne uniquement dans le “monde privé” du cluster Kubernetes.
 
-### 6. Exécuter le rôle gitlab/healthcheck
+Pour quitter le shell, il suffit d’exécuter la commande exit:
 
-Exécutez les playbooks Ansible pour lancer les contrôles de santé, en remplaçant TAG par le tag approprié :
-ansible-playbook /vagrant/playbooks/run.yml --tags TAG -i /tmp/vagrant-ansible/inventory/vagrant_ansible_local_inventory
+Pour l’instant, on ne peut pas encore y accéder depuis l’extérieur car le pod est exposé uniquement dans le réseau interne de Kubernetes.
+
+## 3. Apprendre à exposer un service Kubernetes à l'extérieur
+
+Maintenant, exposons notre application au navigateur.
+
+Dans Kubernetes, pour qu’un utilisateur ou un navigateur puisse accéder à une application, il faut créer un objet appelé Service. Ce Service redirige les demandes du monde extérieur vers les bons pods à l’intérieur du cluster. Sans ce Service, même si nos pods tournent parfaitement, personne ne pourrait y accéder depuis l’extérieur.
+
+Nous allons créer un service qui expose notre application sur le port 8080 :
+
+```bash
+kubectl expose deployment kubernetes-bootcamp --type=NodePort --port=8080
+```
+
+Pour vérifier sur quel port le service a été attaché, utilise la commande suivante :
+
+```bash
+kubectl get services
+```
+
+Comme l’on utilise le Docker driver dans Minikube, on doit créer un tunnel vers le nœud du cluster (qui s'exécute en tant que conteneur Docker). Et cela en exécutant la commande :
+
+```bash
+minikube service kubernetes-bootcamp
+```
+Cette commande ouvre un tunnel temporaire entre ton hôte et le service exposé et lance automatiquement son navigateur vers l’URL correcte.
+
+## 4. Apprendre à augmenter et réduire la taille d'un déploiement Kubernetes
+
+Maintenant nous allons voir comment augmenter et réduire le nombre de Pods. 
+Le “scaling” (changement d’échelle) est une des forces majeures de Kubernetes.
+Dans une entreprise, si un site web reçoit soudainement beaucoup de visiteurs, il faut pouvoir augmenter rapidement le nombre d’instances qui tournent pour absorber la charge.
+Kubernetes le fait très simplement : il suffit d’une seule commande pour multiplier ou réduire le nombre de pods.
+Pour commencer on augmente le déploiement à un total de 5 pods avec la commande :
+
+```bash
+kubectl scale deployments/kubernetes-bootcamp --replicas=5
+```
+
+Pour vérifier si le « scaling » a fonctionné on utiliser la commande :
+
+```bash
+kubectl get pods
+```
+
+On voit bien ici que nous avons maintenant 5 Pods qui tourne actuellement. Nous allons maintenant constater l’augmentation de la taille du déploiement en exposant l’application au navigateur et en rafraîchissant la page. Ce qui doit se passer c’est qu’on doit avoir les différents nom qui apparaissent sur le navigateur au fur et à mesure que nous rafraîchissons la page.
+
+On observe que le nom du Pod affiché sur le navigateur change bien et corresponds à ceux ajouter après avoir augmenter la taille du déploiement.
+Ce que l’on observe s’appel du load balancing (répartition de charge). Kubernetes répartit automatiquement les requêtes entre les différents pods disponibles, comme un serveur de restaurant qui distribue les commandes entre plusieurs cuisiniers.
+
+Maintenant nous allons réduire la taille du déploiement en utilisant la même commande mais en mettant 2 en paramètre :
+
+```bash
+kubectl scale deployments/kubernetes-bootcamp --replicas=2
+```
+
+Nous allons afficher les pods avec la meme commande pour vérifier si la modification de la taille à fonctionne :
+
+```bash
+kubectl get pods
+```
+
+## 5. Exécutez une application à plusieurs pods dans Kubernetes.
+
+Lorsqu’on fait tourner plusieurs pods, Kubernetes devient capable de mettre à jour une application sans interruption. Pour le démontrer, nous avons mis à jour l’image Docker utilisée par le déploiement.
+
+Voici la commande à utiliser :
+
+```bash
+kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=jocatalin/kubernetes-bootcamp:v2
+```
+
+Cette commande indique à Kubernetes de remplacer la version actuelle de l’application (v1) par la nouvelle (v2).
+
+Dès l’exécution, la page du navigateur se met à jour automatiquement, car Kubernetes remplace les anciens pods un par un : c’est ce qu’on appelle un rolling update.
+Cela permet de ne jamais couper le service.
+Pendant que de nouveaux pods (v2) démarrent, les anciens (v1) sont encore actifs. Une fois que les nouveaux sont prêts, les anciens sont arrêtés.
+
+On répète l’opération avec la version suivante :
+
+```bash
+kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=jocatalin/kubernetes-bootcamp:v3
+```
+
+On observe que certains pods sont en train de se créer tandis que d’autres disparaissent : Kubernetes gère la transition de manière fluide.
+
+Si une mise à jour pose problème (par exemple une erreur dans la nouvelle version), on peut revenir facilement à la version précédente avec :
+
+```bash
+kubectl rollout undo deployments/kubernetes-bootcamp
+```
+
+Cette commande annule le dernier déploiement et restaure la version précédente — un peu comme un “Ctrl+Z” pour les applications.
+
+## 6. Exécutez une application à plusieurs pods dans Kubernetes.
+
+Jusqu’à présent, nous avons tout fait avec des commandes dans le terminal.
+Mais dans un vrai projet, il est préférable d’automatiser les déploiements grâce à des fichiers appelés manifestes YAML.
+Ces fichiers décrivent précisément comment doit être déployée l’application, comme une recette complète que Kubernetes peut suivre automatiquement.
+
+D’abord, on nettoie le cluster avec les commandes :
+
+```bash
+kubectl delete service kubernetes-bootcamp
+kubectl delete deployment kubernetes-bootcamp
+```
+
+On lit le fichier avec kubernetes : 
+
+```bash
+kubectl apply -f deployment.yaml
+```
+
+On crée ensuite un fichier service.yaml pour exposer l’application et on lit également le fichier :
+
+```bash
+kubectl apply -f service.yaml
+```
+
+Et après on vérifie le bon fonctionnement avec la commande :
+
+```bash
+minikube service kubernetes-bootcamp
+```
+
+Cela ouvre directement l’application dans le navigateur.
+Enfin, pour tester le scaling à partir du YAML, on modifie replicas: 1 en replicas: 3 puis :
+
+```bash
+kubectl apply -f deployment.yaml
+```
+
+En rafraîchissant la page (CTRL+F5), on remarque que le nom du pod change à chaque fois, preuve que plusieurs répliques répondent à tour de rôle.
+
+## Conclusion
+
+Ce TP nous a permis de comprendre en pratique le fonctionnement de Kubernetes et de ses outils associés.
+Nous avons appris à :
+Créer et gérer des pods,
+Exposer des services,
+Faire du scaling et des mises à jour sans interruption,
+Et enfin, automatiser nos déploiements grâce à des fichiers YAML.
+
+Kubernetes nous montre ici sa puissance : il permet d’administrer des applications complexes de manière fiable, comme un chef d’orchestre coordonne plusieurs musiciens pour jouer une même symphonie sans fausse note.
 
 
 ## Auteur
