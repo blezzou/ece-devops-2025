@@ -1,7 +1,0 @@
-- hosts: all
-  become: yes
-  tasks:
-    - name: Check GitLab health
-      uri:
-        url: http://localhost
-        return_content: yes
